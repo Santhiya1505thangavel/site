@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EDU ODFLOW — Prototype v2</title>
+<style>
+  :root{ --bg1:#0f1724; --card: rgba(255,255,255,0.04); --glass: rgba(255,255,255,0.035); --accent1: #7b2ff7; --accent2: #f107a3; --accent-grad: linear-gradient(135deg,var(--accent1),var(--accent2)); --text: #e6f0ff; --muted: #9fc1e8; --success: #38a169; --danger:#e53e3e; --warn:#d69e2e; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--text); background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.02), transparent 10%), linear-gradient(120deg,#071124 0%, #102a43 35%, #1f6feb 100%); min-height:100vh;}
+  .app{max-width:1200px;margin:26px auto;padding:18px}
+  header.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-radius:12px;background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow: 0 6px 30px rgba(3,11,20,0.5);margin-bottom:14px}
+  header .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:44px;height:44px;border-radius:10px;background:var(--accent-grad);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+  .brand h1{font-size:16px;margin:0}
+  .top-actions{display:flex;gap:8px;align-items:center}
+  .btn{background:var(--card);padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;color:var(--text)}
+  .btn.primary{background:var(--accent-grad);border:none;color:#fff}
+  .layout{display:flex;gap:16px}
+  aside.sidebar{width:250px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:14px;border-radius:12px;flex-shrink:0}
+  aside .nav-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin-bottom:6px;cursor:pointer}
+  aside .nav-item.active{background:rgba(255,255,255,0.03);box-shadow: inset 0 1px 0 rgba(255,255,255,0.02)}
+  main.content{flex:1;min-height:500px}
+  .card{background:var(--glass);padding:16px;border-radius:12px;margin-bottom:12px}
+  h2,h3{margin:0 0 10px 0}
+  label{display:block;margin:8px 0 6px;font-size:13px;color:var(--muted)}
+  input, select, textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text)}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03);text-align:left}
+  .muted{color:var(--muted);font-size:13px}
+  .small{font-size:13px;color:#cfe8ff}
+  .status-pill{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:600;font-size:13px}
+  .status-pending{background:#fef3c7;color:#92400e}
+  .status-approved{background:#c6f6d5;color:#065f46}
+  .status-rejected{background:#fed7d7;color:#6b0a0a}
+  .flex{display:flex;gap:12px;align-items:center}
+  .right{margin-left:auto}
+  .hidden{display:none}
+  .topbar-search{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+  footer{margin-top:8px;color:var(--muted);font-size:13px;text-align:center}
+  .progress{height:10px;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,#7b2ff7,#f107a3)}
+  @media(max-width:920px){aside.sidebar{display:none}.layout{flex-direction:column}.app{padding:12px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">ED</div>
+      <div>
+        <h1>EDU ODFLOW</h1>
+        <div class="muted">On-Duty Management & Student Portal</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div id="sessionArea"></div>
+    </div>
+  </header>
+
+  <!-- LOGIN CARD (initial) -->
+  <div id="loginPanel" class="card">
+    <h2>Login</h2>
+    <div class="muted">Choose role and enter credentials</div>
+    <div style="max-width:520px;margin-top:12px">
+      <label>Login Type</label>
+      <select id="loginType"><option value="">-- Select role --</option><option value="student">Student</option><option value="staff">Staff</option></select>
+
+      <label>Username</label>
+      <input id="loginUsername" placeholder="username (e.g., student01)" />
+
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="password (1234)" />
+
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button id="loginBtn" class="btn primary" disabled>Submit</button>
+        <div id="loginError" class="muted"></div>
+        <div style="margin-left:auto" class="muted">Demo accounts: student01/1234 | mentor01/1234 | incharge01/1234 | hod01/1234</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div id="mainLayout" class="layout hidden">
+    <aside class="sidebar card" id="sidebar">
+      <div id="sidebarProfile" style="margin-bottom:8px"></div>
+      <div id="navList"></div>
+      <div style="margin-top:8px" class="muted small">EDU ODFLOW </div>
+    </aside>
+
+    <main class="content">
+      <!-- Student: Profile -->
+      <section id="page_student_profile" class="card hidden">
+        <h2>Student Profile</h2>
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <div style="width:220px">
+            <div style="background:linear-gradient(135deg,#7b2ff7,#f107a3);padding:14px;border-radius:10px;text-align:center">
+              <div style="font-size:20px;font-weight:700" id="profileDisplayName">Reena S</div>
+              <div class="small" id="stuRegNo"></div>
+            </div>
+          </div>
+          <div style="flex:1">
+            <table>
+              <tr><th>Name</th><td id="stuName"></td></tr>
+              <tr><th>Registration No</th><td id="stuReg"></td></tr>
+              <tr><th>Department</th><td id="stuDept"></td></tr>
+              <tr><th>Year</th><td id="stuYear"></td></tr>
+              <tr><th>Parent / Guardian</th><td id="stuParent"></td></tr>
+              <tr><th>CGPA</th><td id="stuCGPA"></td></tr>
+              <tr><th>PGPA</th><td id="stuPGPA"></td></tr>
+              <tr><th>No. of Arrears</th><td id="stuArrears"></td></tr>
+            </table>
+            <div style="margin-top:10px">
+              <button class="btn" onclick="editStudentProfile()">Edit Profile</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Student: Attendance -->
+      <section id="page_student_attendance" class="card hidden">
+        <h2>Attendance</h2>
+        <div class="muted small">Per-subject attendance for current semester (visual)</div>
+        <table>
+          <thead><tr><th>Subject Code</th><th>Subject</th><th>Classes Held</th><th>Classes Attended</th><th>%</th><th style="width:180px">Progress</th></tr></thead>
+          <tbody id="attendanceTable"></tbody>
+        </table>
+      </section>
+
+      <!-- Student: Academic Reports -->
+      <section id="page_student_academic" class="card hidden">
+        <h2>Academic Reports</h2>
+        <div class="muted small">Semester-wise results</div>
+        <div id="semReports"></div>
+      </section>
+
+      <!-- Student: Apply OD -->
+      <section id="page_student_applyod" class="card hidden">
+        <h2>Apply for OD</h2>
+        <div class="muted small">Fill details and attach proof. OD will be sent to Staff (Mentor → In-Charge → HOD)</div>
+        <div style="max-width:720px;margin-top:10px">
+          <label>From Date</label><input id="od_from" type="date" />
+          <label>To Date</label><input id="od_to" type="date" />
+          <label>Reason / Description</label><textarea id="od_reason" rows="3"></textarea>
+          <label>Attach Proof (image/pdf)</label><input id="od_proof" type="file" accept="image/*,.pdf" />
+          <label>Select Staff (prefer mentor)</label><select id="od_select_mentor"></select>
+          <div style="margin-top:10px"><button class="btn primary" onclick="submitOD()">Submit OD</button></div>
+        </div>
+      </section>
+
+      <!-- Student: OD Tracker -->
+      <section id="page_student_odtracker" class="card hidden">
+        <h2>OD Tracker</h2>
+        <div class="muted small">View your OD requests and approval history. Counts show how many approvals/rejections happened.</div>
+        <div id="odList"></div>
+      </section>
+
+      <!-- Student: Certificates -->
+      <section id="page_student_certificates" class="card hidden">
+        <h2>Certificates</h2>
+        <div class="muted small">Upload and view your certificates</div>
+        <div style="max-width:520px;margin-top:10px">
+          <label>Title</label><input id="stuCertTitle" />
+          <label>File</label><input id="stuCertFile" type="file" accept="image/*,.pdf" />
+          <div style="margin-top:8px"><button class="btn primary" onclick="uploadStudentCert()">Upload</button></div>
+        </div>
+        <div id="stuCertList" style="margin-top:12px"></div>
+      </section>
+
+      <!-- Staff: Profile -->
+      <section id="page_staff_profile" class="card hidden">
+        <h2>Staff Profile</h2>
+        <table>
+          <tr><th>Name</th><td id="staffName"></td></tr>
+          <tr><th>Role</th><td id="staffRole"></td></tr>
+          <tr><th>Department</th><td id="staffDept"></td></tr>
+          <tr><th>Mentor For (Year)</th><td id="staffMentorYear"></td></tr>
+        </table>
+        <div style="margin-top:10px" id="staffNotifications"></div>
+      </section>
+
+      <!-- Staff: Attendance overview -->
+      <section id="page_staff_attendance" class="card hidden">
+        <h2>Attendance Overview</h2>
+        <div class="muted small">Class-wise summary</div>
+        <table>
+          <thead><tr><th>Class</th><th>Avg Attendance</th><th>Low Attendance Subjects</th></tr></thead>
+          <tbody id="staffAttendanceTable"></tbody>
+        </table>
+      </section>
+
+      <!-- Staff: OD Approval Queue -->
+      <section id="page_staff_odapproval" class="card hidden">
+        <h2>OD Approval Queue</h2>
+        <div class="muted small">Pending ODs for your stage (Mentor → In-Charge → HOD)</div>
+        <div id="odApprovalQueue"></div>
+      </section>
+
+      <!-- Staff: Mentee list -->
+      <section id="page_staff_mentees" class="card hidden">
+        <h2>Mentee List</h2>
+        <div id="menteeList"></div>
+      </section>
+
+      <!-- Staff: Academic reports for mentees -->
+      <section id="page_staff_academic" class="card hidden">
+        <h2>Mentee Academic Reports</h2>
+        <div id="menteeReports"></div>
+      </section>
+
+      <!-- Staff: Certificate Upload -->
+      <section id="page_staff_certupload" class="card hidden">
+        <h2>Upload Staff Certificate</h2>
+        <label>Title</label><input id="staffCertTitle" />
+        <label>File</label><input id="staffCertFile" type="file" accept="image/*,.pdf" />
+        <div style="margin-top:8px"><button class="btn primary" onclick="uploadStaffCert()">Upload</button></div>
+        <div id="staffCertList" style="margin-top:10px"></div>
+      </section>
+
+      <!-- Edit Student Profile Modal-like -->
+      <section id="page_edit_student" class="card hidden">
+        <h2>Edit Student Profile</h2>
+        <label>Student Name</label><input id="editName" />
+        <label>Registration No</label><input id="editReg" />
+        <label>Department</label><input id="editDept" />
+        <label>Year</label><select id="editYear"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+        <label>Parent / Guardian</label><input id="editParent" />
+        <label>CGPA</label><input id="editCGPA" type="number" step="0.01" min="0" max="10" />
+        <label>PGPA</label><input id="editPGPA" type="number" step="0.01" min="0" max="10" />
+        <label>No. of Arrears</label><input id="editArr" type="number" />
+        <div style="margin-top:8px" class="flex">
+          <button class="btn" onclick="cancelEdit()">Cancel</button>
+          <button class="btn primary" onclick="saveStudentProfile()">Save</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>Prototype — EDU ODFLOW  · Data in browser localStorage</footer>
+</div>
+
+<script>
+/* -------------------------
+   Demo data and utilities
+   ------------------------- */
+const DEMO = {
+  users: {
+    student01: {type:'student', username:'student01', password:'1234', name:'Santhiya S', reg:'3259', dept:'Information Technology', year:3, parent:'Mr. & Mrs. S', cgpa:8.35, pgpa:0.00, arrears:0, attendance:[
+      {code:'IT301', sub:'Data Structures', held:40, att:36},
+      {code:'IT302', sub:'DBMS', held:40, att:34},
+      {code:'IT303', sub:'OS', held:40, att:35},
+      {code:'IT304', sub:'MPMC', held:40, att:35},
+      {code:'IT305', sub:'OOAD', held:40, att:35},
+      {code:'IT306', sub:'BIG DATA', held:40, att:35}
+    ], sems:[
+      {sem:1,subjects:[{code:'IT101',name:'Maths',marks:78},{code:'IT102',name:'Physics',marks:72}], gpa:7.6},
+      {sem:2,subjects:[{code:'IT201',name:'DSA',marks:82},{code:'IT202',name:'DBMS',marks:79}], gpa:8.05}
+    ], certs:[ {id:'c1',title:'Hackathon Winner',file:'hackathon_certificate.pdf',date:'2024-11-10'} ]
+    },
+    mentor01: {type:'staff', username:'mentor01', password:'1234', name:'Dr. Mentor', role:'Mentor', dept:'Information Technology', mentorYear:3, certs:[]},
+    incharge01: {type:'staff', username:'incharge01', password:'1234', name:'Ms. InCharge', role:'In-Charge', dept:'Information Technology', mentorYear:null, certs:[]},
+    hod01: {type:'staff', username:'hod01', password:'1234', name:'Prof. HOD', role:'HOD', dept:'Information Technology', mentorYear:null, certs:[]}
+  },
+  ods: [
+    // sample history entries to demonstrate counts
+    // {id:'od123', student:'student01', studentName:'Santhiya S', from:'2025-09-02', to:'2025-09-04', reason:'Inter college fest', proof:'proof.pdf', mentor:'mentor01', currentStage:'Mentor', history:[{stage:'Student',action:'Submitted',by:'student01',ts:'2025-09-01T10:00:00Z'}], finalStatus:null}
+  ]
+};
+
+function getState(){
+  const raw = localStorage.getItem('edu.odflow.v2');
+  if(raw) return JSON.parse(raw);
+  localStorage.setItem('edu.odflow.v2', JSON.stringify(DEMO));
+  return DEMO;
+}
+function saveState(state){ localStorage.setItem('edu.odflow.v2', JSON.stringify(state)); }
+
+/* -------------------------
+   Session & routing
+   ------------------------- */
+let session = null; // {username,type,role}
+const state = getState();
+
+// elements
+const loginPanel = document.getElementById('loginPanel');
+const loginBtn = document.getElementById('loginBtn');
+const loginType = document.getElementById('loginType');
+const loginUsername = document.getElementById('loginUsername');
+const loginPassword = document.getElementById('loginPassword');
+const loginError = document.getElementById('loginError');
+const mainLayout = document.getElementById('mainLayout');
+const sidebar = document.getElementById('sidebar');
+const sessionArea = document.getElementById('sessionArea');
+
+function enableLoginCheck(){
+  function check(){ loginBtn.disabled = !(loginType.value && loginUsername.value.trim() && loginPassword.value.trim()); loginError.textContent=''; }
+  loginType.addEventListener('change', check);
+  loginUsername.addEventListener('input', check);
+  loginPassword.addEventListener('input', check);
+}
+enableLoginCheck();
+
+loginBtn.addEventListener('click', () => {
+  const type = loginType.value;
+  const user = loginUsername.value.trim();
+  const pass = loginPassword.value.trim();
+  const st = getState();
+  const found = st.users[user];
+  if(!found || found.password !== pass){
+    loginError.textContent = 'Invalid login — check username/password.';
+    return;
+  }
+  // ensure selected role matches account type
+  if(type === 'student' && found.type !== 'student'){ loginError.textContent='Selected role does not match account.'; return; }
+  if(type === 'staff' && found.type !== 'staff'){ loginError.textContent='Selected role does not match account.'; return; }
+  session = {username:found.username, type: found.type, role: found.role || ''};
+  afterLogin();
+});
+
+/* -------------------------
+   Post-login initialization
+   ------------------------- */
+function afterLogin(){
+  loginPanel.classList.add('hidden');
+  mainLayout.classList.remove('hidden');
+  populateSidebarAndHeader();
+  renderCurrentView();
+}
+
+function populateSidebarAndHeader(){
+  const st = getState();
+  const u = st.users[session.username];
+  sessionArea.innerHTML = `<div style="text-align:right"><div style="font-weight:700">${u.name}</div><div class="muted">${u.dept || ''} ${u.role?('· '+u.role):''}</div><div style="margin-top:6px"><button class="btn" onclick="doLogout()">Logout</button></div></div>`;
+
+  const sb = document.getElementById('sidebarProfile');
+  sb.innerHTML = `<div style="padding:8px;background:linear-gradient(90deg,#0f1724, rgba(255,255,255,0.01));border-radius:8px"><div style="font-weight:700">${u.name}</div><div class="muted">${u.type==='student'?'Student':'Staff'} · ${u.dept||''}</div></div>`;
+
+  const navList = document.getElementById('navList');
+  navList.innerHTML = '';
+  if(session.type === 'student'){
+    addNav('Profile','page_student_profile', true);
+    addNav('Attendance','page_student_attendance');
+    addNav('Academic Reports','page_student_academic');
+    addNav('Apply OD','page_student_applyod');
+    addNav('OD Tracker','page_student_odtracker');
+    addNav('Certificates','page_student_certificates');
+  } else {
+    addNav('Profile','page_staff_profile', true);
+    addNav('Attendance Overview','page_staff_attendance');
+    addNav('OD Approval','page_staff_odapproval');
+    addNav('Mentee List','page_staff_mentees');
+    addNav('Mentee Reports','page_staff_academic');
+    addNav('Certificates Upload','page_staff_certupload');
+  }
+  function addNav(title,id,selected){
+    const el = document.createElement('div');
+    el.className = 'nav-item' + (selected? ' active':'');
+    el.innerHTML = `<div style="font-weight:600">${title}</div>`;
+    el.onclick = ()=>{ document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); el.classList.add('active'); showPage(id); };
+    navList.appendChild(el);
+  }
+}
+
+/* -------------------------
+   Page rendering functions
+   ------------------------- */
+function renderCurrentView(){
+  document.querySelectorAll('main.content section').forEach(s=>s.classList.add('hidden'));
+  if(session.type === 'student') renderStudentPages(); else renderStaffPages();
+}
+
+function showPage(id){ document.querySelectorAll('main.content section').forEach(s=>s.classList.add('hidden')); const el = document.getElementById(id); if(el) el.classList.remove('hidden'); }
+
+function renderStudentPages(){
+  const st = getState();
+  const u = st.users[session.username];
+
+  document.getElementById('stuName').innerText = u.name;
+  document.getElementById('stuReg').innerText = u.reg;
+  document.getElementById('stuRegNo').innerText = u.reg;
+  document.getElementById('profileDisplayName').innerText = u.name;
+  document.getElementById('stuDept').innerText = u.dept;
+  document.getElementById('stuYear').innerText = u.year;
+  document.getElementById('stuParent').innerText = u.parent;
+  document.getElementById('stuCGPA').innerText = u.cgpa;
+  document.getElementById('stuPGPA').innerText = u.pgpa || '-';
+  document.getElementById('stuArrears').innerText = u.arrears;
+
+  const aT = document.getElementById('attendanceTable'); aT.innerHTML='';
+  u.attendance.forEach(row=>{
+    const perc = Math.round((row.att/row.held)*100);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.code}</td><td>${row.sub}</td><td>${row.held}</td><td>${row.att}</td><td>${perc}%</td><td><div class="progress"><i style="width:${perc}%"></i></div></td>`;
+    aT.appendChild(tr);
+  });
+
+  const semReports = document.getElementById('semReports'); semReports.innerHTML='';
+  u.sems.forEach(s=>{ const div = document.createElement('div'); div.innerHTML = `<h3>Semester ${s.sem} · GPA: ${s.gpa}</h3><table><thead><tr><th>Code</th><th>Subject</th><th>Marks</th></tr></thead><tbody>${s.subjects.map(sub=>`<tr><td>${sub.code}</td><td>${sub.name}</td><td>${sub.marks}</td></tr>`).join('')}</tbody></table>`; semReports.appendChild(div); });
+
+  const certList = document.getElementById('stuCertList'); certList.innerHTML='';
+  if(u.certs && u.certs.length){
+    u.certs.forEach(c=>{ const div = document.createElement('div'); div.className='card'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${c.title}</strong><div class="muted small">${c.date}</div></div><div><button class="btn" onclick="downloadDemo('${c.file}')">Download</button></div></div>`; certList.appendChild(div); });
+  } else certList.innerHTML = '<div class="muted">No certificates uploaded.</div>';
+
+  // OD mentors select: show available staff names (some pre-filled)
+  const mentorSel = document.getElementById('od_select_mentor'); mentorSel.innerHTML='';
+  // provide helpful defaults in the dropdown
+  Object.values(st.users).filter(x=>x.type==='staff').forEach(su=>{ const opt = document.createElement('option'); opt.value = su.username; opt.textContent = `${su.name} (${su.role||'Staff'})`; mentorSel.appendChild(opt); });
+
+  renderStudentODList();
+  showPage('page_student_profile');
+}
+
+function renderStudentODList(){
+  const st = getState();
+  const ods = st.ods.filter(o=>o.student === session.username);
+  const odList = document.getElementById('odList'); odList.innerHTML='';
+  if(!ods.length){ odList.innerHTML = '<div class="muted">No OD requests yet.</div>'; return; }
+  ods.forEach(o=>{
+    const div = document.createElement('div'); div.className='card';
+    const approvals = (o.history||[]).filter(h=>h.action && h.action.toLowerCase().includes('approve')).length;
+    const rejections = (o.history||[]).filter(h=>h.action && h.action.toLowerCase().includes('reject')).length;
+    const hist = (o.history||[]).map(h=>`<div class="muted small">${h.ts} — ${h.stage} — ${h.action}${h.note?(' — '+h.note):''}</div>`).join('');
+    div.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><div><strong>${o.from} → ${o.to}</strong><div class="muted">${o.reason}</div></div><div class="right"><span class="status-pill ${o.finalStatus? (o.finalStatus==='Approved'?'status-approved':'status-rejected') : 'status-pending'}">${o.finalStatus || o.currentStage}</span></div></div><div style="margin-top:8px">Approvals: <strong>${approvals}</strong> · Rejections: <strong>${rejections}</strong></div><div style="margin-top:8px">${hist}</div>`;
+    odList.appendChild(div);
+  });
+}
+
+/* -------------------------
+   Staff pages rendering
+   ------------------------- */
+function renderStaffPages(){
+  const st = getState();
+  const u = st.users[session.username];
+  document.getElementById('staffName').innerText = u.name;
+  document.getElementById('staffRole').innerText = u.role || (session.role || 'Staff');
+  document.getElementById('staffDept').innerText = u.dept || '';
+  document.getElementById('staffMentorYear').innerText = u.mentorYear || '-';
+
+  const sat = document.getElementById('staffAttendanceTable'); sat.innerHTML = '';
+  const r = document.createElement('tr'); r.innerHTML = `<td>IT - Year ${u.mentorYear||2}</td><td>88%</td><td>Maths, DBMS</td>`; sat.appendChild(r);
+
+  const menteeListDiv = document.getElementById('menteeList'); menteeListDiv.innerHTML='';
+  // mentees: for mentors, by mentorYear; for in-charge/HOD show broader list
+  const mentees = Object.values(st.users).filter(x=>x.type==='student' && (u.mentorYear? String(x.year)===String(u.mentorYear) : x.dept===u.dept));
+  if(mentees.length){
+    mentees.forEach(m=>{
+      const d = document.createElement('div'); d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${m.name}</strong><div class="muted small">Reg: ${m.reg} · CGPA: ${m.cgpa}</div></div><div><button class="btn" onclick="viewMenteeReport('${m.username}')">View Report</button></div></div>`; menteeListDiv.appendChild(d);
+    });
+  } else menteeListDiv.innerHTML = '<div class="muted">No mentees assigned (demo)</div>';
+
+  document.getElementById('menteeReports').innerHTML = '<div class="muted">Select a mentee to view reports</div>';
+
+  renderStaffCertList();
+  renderODApprovalQueue();
+  renderStaffNotifications();
+  showPage('page_staff_profile');
+}
+
+function viewMenteeReport(username){
+  const st = getState();
+  const m = st.users[username];
+  if(!m){ alert('Mentee not found'); return; }
+  const container = document.getElementById('menteeReports');
+  container.innerHTML = `<h3>${m.name} · Reg: ${m.reg}</h3>`;
+  m.sems.forEach(s=>{
+    const div = document.createElement('div'); div.innerHTML = `<h4>Semester ${s.sem} — GPA: ${s.gpa}</h4><table><thead><tr><th>Code</th><th>Subject</th><th>Marks</th></tr></thead><tbody>${s.subjects.map(sb=>`<tr><td>${sb.code}</td><td>${sb.name}</td><td>${sb.marks}</td></tr>`).join('')}</tbody></table>`; container.appendChild(div);
+  });
+  showPage('page_staff_academic');
+}
+
+/* -------------------------
+   OD - submission & workflow
+   ------------------------- */
+function submitOD(){
+  const from = document.getElementById('od_from').value;
+  const to = document.getElementById('od_to').value;
+  const reason = document.getElementById('od_reason').value.trim();
+  const proofFile = document.getElementById('od_proof').files[0];
+  const mentor = document.getElementById('od_select_mentor').value;
+  if(!from || !to || !reason || !proofFile){ alert('Please fill all OD fields and attach proof.'); return; }
+  const id = 'od' + Date.now();
+  const st = getState();
+  const student = session.username;
+  const studentName = st.users[student].name;
+  const od = {
+    id, student, studentName, from, to, reason, proof: proofFile.name, mentor: mentor || 'mentor01', currentStage: 'Mentor', history:[{stage:'Student', action:'Submitted', by:student, note:'', ts:new Date().toLocaleString()}], finalStatus: null
+  };
+  st.ods.push(od);
+  saveState(st);
+  alert('OD submitted. It will be routed to Staff for approval.');
+  document.getElementById('od_from').value=''; document.getElementById('od_to').value=''; document.getElementById('od_reason').value=''; document.getElementById('od_proof').value='';
+  renderStudentODList();
+  renderODApprovalQueue();
+  showPage('page_student_odtracker');
+}
+
+function renderODApprovalQueue(){
+  const st = getState();
+  const u = st.users[session.username];
+  const role = u.role || (session.role || '').toString();
+  const queueDiv = document.getElementById('odApprovalQueue'); queueDiv.innerHTML='';
+  const pending = st.ods.filter(o=>{ if(o.finalStatus) return false; if(role === 'Mentor') return o.currentStage === 'Mentor' && o.mentor === session.username; if(role === 'In-Charge') return o.currentStage === 'In-Charge'; if(role === 'HOD') return o.currentStage === 'HOD'; return false; });
+  if(!pending.length){ queueDiv.innerHTML = '<div class="muted">No pending ODs for you.</div>'; return; }
+  pending.forEach(o=>{
+    const card = document.createElement('div'); card.className='card';
+    const approvals = (o.history||[]).filter(h=>h.action && h.action.toLowerCase().includes('approve')).length;
+    const rejections = (o.history||[]).filter(h=>h.action && h.action.toLowerCase().includes('reject')).length;
+    const hist = (o.history||[]).map(h=>`<div class="muted small">${h.ts} — ${h.stage} — ${h.action}${h.note?(' — '+h.note):''}</div>`).join('');
+    card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${o.studentName}</strong> <div class="muted">${o.from} → ${o.to}</div></div><div><span class="status-pill status-pending">${o.currentStage}</span></div></div>
+      <div style="margin-top:8px">${o.reason}</div>
+      <div style="margin-top:8px">Approvals: <strong>${approvals}</strong> · Rejections: <strong>${rejections}</strong></div>
+      <div style="margin-top:8px">${hist}</div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn" onclick="openODDetail('${o.id}')">View</button>
+        <button class="btn primary" onclick="approveOD('${o.id}')">Approve</button>
+        <button class="btn" onclick="rejectOD('${o.id}')">Reject</button>
+      </div>`;
+    queueDiv.appendChild(card);
+  });
+}
+
+function openODDetail(id){ const st = getState(); const o = st.ods.find(x=>x.id===id); if(!o) { alert('Not found'); return; } alert(`OD Details\nStudent: ${o.studentName}\nFrom: ${o.from}\nTo: ${o.to}\nReason: ${o.reason}\nProof: ${o.proof}\nCurrent: ${o.currentStage}`); }
+
+function approveOD(id){
+  const st = getState(); const o = st.ods.find(x=>x.id===id); if(!o) return alert('OD not found');
+  if(o.currentStage === 'Mentor'){
+    o.history.push({stage:'Mentor', action:'Approved', by:session.username, note:'', ts:new Date().toLocaleString()});
+    o.currentStage = 'In-Charge';
+    o.history.push({stage:'System', action:'Routed', by:'system', note:'To In-Charge', ts:new Date().toLocaleString()});
+  } else if(o.currentStage === 'In-Charge'){
+    o.history.push({stage:'In-Charge', action:'Approved', by:session.username, note:'', ts:new Date().toLocaleString()});
+    o.currentStage = 'HOD';
+    o.history.push({stage:'System', action:'Routed', by:'system', note:'To HOD', ts:new Date().toLocaleString()});
+  } else if(o.currentStage === 'HOD'){
+    o.history.push({stage:'HOD', action:'Approved', by:session.username, note:'Final Approval', ts:new Date().toLocaleString()});
+    o.currentStage = 'Done'; o.finalStatus = 'Approved';
+  }
+  saveState(st); alert('Action recorded: Approved'); renderODApprovalQueue(); renderStudentODList(); renderStaffNotifications();
+}
+
+function rejectOD(id){ const st = getState(); const o = st.ods.find(x=>x.id===id); if(!o) return alert('OD not found'); o.history.push({stage: o.currentStage, action:'Rejected', by: session.username, note:'Not suitable', ts: new Date().toLocaleString()}); o.currentStage = 'Done'; o.finalStatus = 'Rejected'; saveState(st); alert('OD Rejected.'); renderODApprovalQueue(); renderStudentODList(); renderStaffNotifications(); }
+
+/* -------------------------
+   Staff: certificates
+   ------------------------- */
+function uploadStaffCert(){ const title = document.getElementById('staffCertTitle').value.trim(); const file = document.getElementById('staffCertFile').files[0]; if(!title || !file){ alert('Provide title and select file'); return; } const st = getState(); const staff = st.users[session.username]; if(!staff.certs) staff.certs = []; staff.certs.push({id:'sc'+Date.now(), title, file:file.name, date: new Date().toLocaleDateString()}); saveState(st); alert('Certificate uploaded (demo).'); document.getElementById('staffCertTitle').value=''; document.getElementById('staffCertFile').value=''; renderStaffCertList(); }
+
+function renderStaffCertList(){ const st = getState(); const staff = st.users[session.username]; const el = document.getElementById('staffCertList'); el.innerHTML=''; if(staff.certs && staff.certs.length){ staff.certs.forEach(c=>{ const div = document.createElement('div'); div.className='card'; div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${c.title}</strong><div class="muted small">${c.date}</div></div><div><button class="btn" onclick="downloadDemo('${c.file}')">Download</button></div></div>`; el.appendChild(div); }); } else el.innerHTML='<div class="muted">No certificates uploaded.</div>'; }
+
+/* -------------------------
+   Student: upload certificates
+   ------------------------- */
+function uploadStudentCert(){ const title = document.getElementById('stuCertTitle').value.trim(); const file = document.getElementById('stuCertFile').files[0]; if(!title || !file){ alert('Provide title and select file'); return; } const st = getState(); const u = st.users[session.username]; if(!u.certs) u.certs = []; u.certs.push({id:'sc'+Date.now(), title, file:file.name, date: new Date().toLocaleDateString()}); saveState(st); alert('Certificate uploaded (demo).'); document.getElementById('stuCertTitle').value=''; document.getElementById('stuCertFile').value=''; renderStudentPages(); }
+
+/* -------------------------
+   Helpers & small utilities
+   ------------------------- */
+function downloadDemo(name){ alert('This is a demo prototype — file: ' + name); }
+
+function editStudentProfile(){ const st = getState(); const u = st.users[session.username]; document.getElementById('editName').value = u.name; document.getElementById('editReg').value = u.reg; document.getElementById('editDept').value = u.dept; document.getElementById('editYear').value = u.year; document.getElementById('editParent').value = u.parent; document.getElementById('editCGPA').value = u.cgpa; document.getElementById('editPGPA').value = u.pgpa; document.getElementById('editArr').value = u.arrears; showPage('page_edit_student'); }
+function cancelEdit(){ showPage('page_student_profile'); }
+function saveStudentProfile(){ const st = getState(); const u = st.users[session.username]; const name = document.getElementById('editName').value.trim(); const reg = document.getElementById('editReg').value.trim(); const dept = document.getElementById('editDept').value.trim(); const year = document.getElementById('editYear').value; const parent = document.getElementById('editParent').value.trim(); const cgpa = parseFloat(document.getElementById('editCGPA').value) || 0; const pgpa = parseFloat(document.getElementById('editPGPA').value) || 0; const arr = parseInt(document.getElementById('editArr').value) || 0; if(cgpa < 7 || (pgpa && pgpa < 7)){ if(!confirm('CGPA or PGPA is < 7. Continue saving?')) return; } u.name = name; u.reg = reg; u.dept = dept; u.year = year; u.parent = parent; u.cgpa = cgpa; u.pgpa = pgpa; u.arrears = arr; saveState(st); alert('Profile updated (demo).'); renderStudentPages(); }
+
+function doLogout(){ if(!confirm('Logout?')) return; session = null; mainLayout.classList.add('hidden'); loginPanel.classList.remove('hidden'); loginType.value=''; loginUsername.value=''; loginPassword.value=''; loginBtn.disabled = true; loginError.textContent = ''; sessionArea.innerHTML = ''; }
+
+function downloadState(){ const blob = new Blob([localStorage.getItem('edu.odflow.v2')||'{}'], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'edu_odflow_state_v2.json'; a.click(); }
+
+/* -------------------------
+   Staff notifications (mentor / in-charge / hod) 
+   ------------------------- */
+function renderStaffNotifications(){ const st = getState(); const u = st.users[session.username]; const container = document.getElementById('staffNotifications'); container.innerHTML=''; const notes = [];
+  // Mentor: ODs where mentor===username and currentStage is Mentor
+  const mentorPending = st.ods.filter(o=>!o.finalStatus && o.mentor === session.username && o.currentStage === 'Mentor');
+  if(mentorPending.length) notes.push({title:'Mentor approvals', body:`You have ${mentorPending.length} OD(s) waiting for Mentor action.`});
+  // In-Charge: ODs at In-Charge stage
+  const inChargePending = st.ods.filter(o=>!o.finalStatus && o.currentStage === 'In-Charge');
+  if(inChargePending.length && (u.role==='In-Charge' || u.role==='HOD')) notes.push({title:'In-Charge queue', body:`${inChargePending.length} OD(s) at In-Charge stage.`});
+  // HOD: ODs at HOD stage
+  const hodPending = st.ods.filter(o=>!o.finalStatus && o.currentStage === 'HOD');
+  if(hodPending.length && u.role==='HOD') notes.push({title:'HOD queue', body:`${hodPending.length} OD(s) at HOD stage.`});
+  // If class in-charge: list student names who applied (for demo we'll assume in-charge wants dept-wise list)
+  if(u.role==='In-Charge'){ const studentsApplied = st.ods.filter(o=>o.currentStage && o.student && st.users[o.student] && st.users[o.student].dept===u.dept).map(o=>o.studentName); if(studentsApplied.length) notes.push({title:'Students applied', body:`Students from your dept applied: ${[...new Set(studentsApplied)].join(', ')}`}); }
+
+  if(!notes.length){ container.innerHTML = '<div class="muted">No notifications</div>'; return; }
+  notes.forEach(n=>{ const d = document.createElement('div'); d.className='card'; d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${n.title}</strong><div class="muted small">${n.body}</div></div></div>`; container.appendChild(d); }); }
+
+/* -------------------------
+   Initialization
+   ------------------------- */
+(function init(){ getState(); loginBtn.disabled = true; })();
+
+</script>
+</body>
+</html>
